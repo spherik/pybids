@@ -46,28 +46,10 @@ class BIDSLayout(Layout):
 
         return merged_param_dict
 
-    def get_fieldmap(self, path, return_list=False):
-        fieldmaps = self._get_fieldmaps(path)
-
-        if return_list:
-            return fieldmaps
-        else:
-            if len(fieldmaps) == 1:
-                return fieldmaps[0]
-            elif len(fieldmaps) > 1:
-                raise ValueError("More than one fieldmap found, but the "
-                                 "'return_list' argument was set to False. "
-                                 "Either ensure that there is only one "
-                                 "fieldmap for this image, or set the "
-                                 "'return_list' argument to True and handle "
-                                 "the result as a list.")
-            else:  # len(fieldmaps) == 0
-                return None
-
-    def _get_fieldmaps(self, path):
+    def get_fieldmap(self, path):
         sub = os.path.split(path)[1].split("_")[0].split("sub-")[1]
-        fieldmap_set = []
-        type_ = '(phase1|phasediff|epi|fieldmap)'
+        fieldmap_set = {}
+        type_ = '(phase1|phase2|phasediff|epi|fieldmap)'
         for file in self.get(subject=sub, type=type_,
                              extensions=['nii.gz', 'nii']):
             metadata = self.get_metadata(file.filename)
@@ -77,32 +59,34 @@ class BIDSLayout(Layout):
                 else:
                     intended_for = [metadata["IntendedFor"]]
                 if any([path.endswith(suffix) for suffix in intended_for]):
-                    cur_fieldmap = {}
                     if file.type == "phasediff":
-                        cur_fieldmap = {"phasediff": file.filename,
+                        fieldmap_set = {"phasediff": file.filename,
                                         "magnitude1": file.filename.replace(
                                             "phasediff", "magnitude1"),
                                         "magnitude2": file.filename.replace(
                                             "phasediff", "magnitude2"),
                                         "type": "phasediff"}
+                        break
                     elif file.type == "phase1":
-                        cur_fieldmap["phase1"] = file.filename
-                        cur_fieldmap["magnitude1"] = \
+                        fieldmap_set["phase1"] = file.filename
+                        fieldmap_set["magnitude1"] = \
                             file.filename.replace("phase1", "magnitude1")
-                        cur_fieldmap["phase2"] = \
-                            file.filename.replace("phase1", "phase2")
-                        cur_fieldmap["magnitude2"] = \
-                            file.filename.replace("phase1", "magnitude2")
-                        cur_fieldmap["type"] = "phase"
+                        fieldmap_set["type"] = "phase"
+                    elif file.type == "phase2":
+                        fieldmap_set["phase2"] = file.filename
+                        fieldmap_set["magnitude2"] = \
+                            file.filename.replace("phase2", "magnitude2")
+                        fieldmap_set["type"] = "phase"
                     elif file.type == "epi":
-                        cur_fieldmap["epi"] = file.filename
-                        cur_fieldmap["type"] = "epi"
+                        if "epi" not in fieldmap_set.keys():
+                            fieldmap_set["epi"] = []
+                        fieldmap_set["epi"].append(file.filename)
+                        fieldmap_set["type"] = "epi"
                     elif file.type == "fieldmap":
-                        cur_fieldmap["fieldmap"] = file.filename
-                        cur_fieldmap["magnitude"] = \
+                        fieldmap_set["fieldmap"] = file.filename
+                        fieldmap_set["magnitude"] = \
                             file.filename.replace("fieldmap", "magnitude")
-                        cur_fieldmap["type"] = "fieldmap"
-                    fieldmap_set.append(cur_fieldmap)
+                        fieldmap_set["type"] = "fieldmap"
         return fieldmap_set
 
     def find_match(self, target, source=None):
