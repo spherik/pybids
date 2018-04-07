@@ -76,7 +76,7 @@
         },
         {
             "name": "modality",
-            "pattern": "[/\\\\](func|anat|fmap|dwi)[/\\\\]"
+            "pattern": "[/\\\\](func|anat|fmap|dwi|ieeg)[/\\\\]"
         }
     ],
     "default_path_patterns": [
